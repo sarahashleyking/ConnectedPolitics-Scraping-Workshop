@@ -1,0 +1,297 @@
+---
+title: "Web Scraping Workshop"
+author: "Sarah King"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Introduction
+
+-   Web scraping is a technique for efficiently collecting and organizing information from websites. Although these data can be collected manually, automation saves time and is less error-prone.
+
+-   In this workshop, participants will use R to automate the web scraping process. Participants will learn about the general structure of a typical web page and how to use the `rvest` package to select elements, such as text fields and tables, and iteratively extract relevant data.
+
+-   All of the materials for the workshop (slides & R Script) can be found in this GitHub repository (<https://github.com/sarahashleyking/ConnectedPolitics-Scraping-Workshop.git>)
+
+# Outline of Content
+
+-   Introduction of necessary packages
+
+-   Important functions
+
+-   FOR loop
+
+-   HTML: The front-end syntax
+
+-   Selector Gadget
+
+-   Scraping multiple pages/tables/data that is not on the specified page
+
+    -   Brief QTA example
+
+-   Caveats/Conclusion
+
+# Packages
+
+-   [tidyverse](https://www.tidyverse.org/) - The tidyverse is an opinionated collection of R packages designed for data science. Necessary for data cleaning/wrangling.
+
+    -   [rvest](https://rvest.tidyverse.org/) - (a part of the tidyverse) necessary for the actual web-scraping/crawling
+
+```{r echo=TRUE}
+#install.packages('rvest')
+#install.packages('tidyverse')
+library(rvest)
+library(tidyverse)
+```
+
+# Important Functions
+
+-   `data.frame()` creates data frames, tightly coupled collections of variables which share many of the properties of matrices and of lists, used as the fundamental data structure by most of R's modeling software.
+
+-   `rbind()/cbind()` takes a sequence of vector, matrix or data-frame arguments and combine by columns or rows, respectively.\
+
+# Important Functions II
+
+-   `paste()` / `paste0()` concatenate vectors after converting to character.
+
+-   `str_sub()` takes a portion of a string and `str_remove()` removes a portion of a string.\
+
+```{r, echo = TRUE}
+str_sub("Sarah", start = 1, end = 2)
+```
+
+```{r, echo = TRUE}
+str_remove("Sarah", "S")
+```
+
+```{r, echo = TRUE}
+paste("Sarah", "King")
+```
+
+```{r, echo = TRUE}
+paste("Sarah", "King", sep = "_")
+```
+
+```{r, echo = TRUE}
+paste0("Sarah", "King")
+```
+
+```{r, echo = TRUE}
+month = "Nov"
+year = "2021"
+paste0(month, "-", year)
+```
+
+# FOR Loop
+
+-   A for-loop is a control flow statement for specifying iteration, which allows code to be executed repeatedly. The basic structure of a for-loop is:
+
+    `for (variable in sequence) {`
+
+    `expression`
+
+    `}`
+
+```{r, echo = TRUE}
+print("Monday")
+print("Tuesday")
+print("Wednesday")
+print("Thursday")
+print("Friday")
+print("Saturday")
+print("Sunday")
+```
+
+```{r, echo = TRUE}
+days = c("Monday", "Tuesday", "Wedndesday", "Thursday", "Friday", "Saturday", "Sunday")
+
+for (i in 1:7) {
+  print(days[i])
+}
+```
+
+# HTML: The front-end syntax
+
+Most, if not all, websites use some form of HTML. It is the default syntax language to design webpages along with CSS to edit the layout and Javascript to make dynamic pages. Webpages are based on HTML elements.
+
+These are nodes written using a tag in the HTML document. `html, head, title, body, h2, p` are all elements because they are represented by tags. We can see these elements by viewing the source code of the webpage. Tags (or elements) are used to select which part of the webpage to scrape.
+
+\
+Example 1: <http://sarahaking.net/>\
+To start scraping, you first need to store the HTML code of the webpage in a variable. We do that by using `read_html()`
+
+```{r, echo = TRUE}
+read_html("http://sarahaking.net/")
+```
+
+Then we look for the HTML tag or element that we want to select. We use `html_nodes()` to select the part of the webpage that we want to scrape. Let's try `p`
+
+```{r}
+link = "https://sarahaking.net//"
+link %>% read_html() %>% html_nodes("p")
+```
+
+Different types of elements can be scraped off a webpage. They can be text elements, tables, links, etc. To scrape text, the function `html_text()` is used.
+
+```{r, echo = TRUE}
+link = "https://sarahaking.net/"
+output = link %>% read_html() %>% html_nodes("p") %>% html_text()
+output
+```
+
+`Stringr` functions can be useful here to clean the output data: `str_remove()`, `str_sub`, etc.
+
+```{r, echo=TRUE}
+str_remove(output, "–")
+
+```
+
+# Selector Gadget
+
+It is very useful to have a broad understanding of how HTML tags and elements work. But there's a tool that we can use to select different elements of a webpage without having to go through all the code: [**https://chrome.google.com/webstore/detail/selectorgadget/mhjhnkcfbdhnjickkkdbjoemdmbfginb**](https://chrome.google.com/webstore/detail/selectorgadget/mhjhnkcfbdhnjickkkdbjoemdmbfginb){.uri}
+
+\
+Let's see how this works.\
+Example 2: [UCD SPIRe PhD Candidates](https://www.ucd.ie/spire/about/phdcandidates/)
+
+```{r, echo = TRUE}
+link = "https://www.ucd.ie/spire/about/phdcandidates/"
+link %>% read_html() %>% html_nodes("p") %>% html_text()
+```
+
+```{r, echo = TRUE}
+link = "https://www.ucd.ie/spire/about/phdcandidates/"
+link %>% read_html() %>% html_nodes("p:nth-child(1) strong") %>% html_text()
+```
+
+# Scraping multiple pages
+
+'for' loops come into play when we need to scrape multiple pages in one call.\
+First, I'll need to examine the structure of the URL and see if there are any patterns (which is usually the case). The first page needs to be scraped separately because its URL is usually different and you also need an initial data frame to add the rest of the data to.\
+
+Example 3:[Trustpilot-Amazon](https://www.trustpilot.com/review/www.amazon.com)\
+In this example, we'll also see how to scrape multiple fields on a single page and use the `seq()` function.\
+Scraping the first page:
+
+```{r, echo=TRUE}
+link = "https://www.trustpilot.com/review/www.amazon.com"
+name = link %>% read_html() %>% html_nodes(".styles_consumerDetails__ZFieb .typography_appearance-default__AAY17") %>% html_text()
+reviews = link %>% read_html() %>% html_nodes(".typography_body-l__KUYFJ.typography_color-black__5LYEn") %>% html_text()
+reviews_complete = data.frame(name, reviews, stringsAsFactors = FALSE)
+```
+
+Scraping the next 5 pages:
+
+```{r, echo=TRUE}
+for (i in seq(from = 2, to = 6, by = 1)) {
+    link = paste0("https://www.trustpilot.com/review/www.amazon.com?page=", i)
+    name = link %>% read_html() %>% html_nodes(".styles_consumerDetails__ZFieb .typography_appearance-default__AAY17") %>% html_text()
+    reviews = link %>% read_html() %>% html_nodes(".typography_body-l__KUYFJ.typography_color-black__5LYEn") %>% html_text()
+    temp = data.frame(name, reviews, stringsAsFactors = FALSE)
+    reviews_complete = rbind(reviews_complete, temp)
+    rm(temp)
+}
+```
+
+# What can we do with the data?
+
+Since we have scraped the full text of the reviews for Amazon from Trustpilot, we can perform some basic natural language processing techniques. Using the `quanteda` package, let's run a very simple sentiment analysis on the reviews we have scraped from the first 6 pages.
+
+```{r, echo=TRUE}
+library(quanteda)
+```
+
+```{r, echo=TRUE}
+reviews_dfm <- corpus(reviews_complete, text_field = "reviews") %>% tokens(remove_punct = TRUE) %>% tokens_select(pattern = stopwords("en"), selection = "remove") %>% dfm()
+
+topfeatures = as.data.frame(topfeatures(reviews_dfm, n = 50))
+```
+
+```{r}
+reviews_corpus <- corpus(reviews_complete, text_field = "reviews")
+reviews_sentiment <- tokens(reviews_corpus) %>% 
+  tokens_lookup(data_dictionary_LSD2015)%>%  
+  dfm() %>% 
+  convert(to = "data.frame")
+
+reviews_sentiment <- reviews_sentiment %>% 
+  mutate(sentiment = log((positive + neg_negative + 0.5) /
+                           (negative +neg_positive + 0.5)))
+summary(reviews_sentiment$sentiment)
+```
+
+# Scraping a table
+
+`html_table()` is used to retrieve complete tables.\
+
+Seeing a table doesn't necessarily mean that there's one. A table is a type of element in HTML and you need to see the table 'table' tag in the code. If it has an ID or a class, we use them. Otherwise, we don't specify any HTML nodes.\
+Let's examine this page.
+
+Table Scraping Example 4: [U.S. Polling Presidential Election 2024](https://en.wikipedia.org/wiki/Polling_for_United_States_presidential_elections#2020)
+
+```{r, echo = TRUE}
+uslink = read_html("https://en.wikipedia.org/wiki/Nationwide_opinion_polling_for_the_2024_United_States_presidential_election")
+uspolls = uslink %>% html_table() 
+uspolls24 = uspolls[[8]]
+```
+
+Table Scraping Example 5: [German Election Polling 2021-2023](https://en.wikipedia.org/wiki/Opinion_polling_for_the_next_German_federal_election)
+
+```{r, echo = TRUE}
+deurl = read_html("https://en.wikipedia.org/wiki/Opinion_polling_for_the_next_German_federal_election")
+depolls  = deurl %>% html_table()
+```
+
+```{r, echo=TRUE}
+depolls23= depolls[[1]]
+depolls22= depolls[[2]]
+depolls21= depolls[[3]]
+```
+
+# Scraping data that is not on the specified webpage
+
+Sometimes, you need to scrape data on a parent page and a child page simultaneously. This is when `html_attr()` comes into play.
+
+Example 6: [House of the Oireachtas Parliamentary Questions](https://www.oireachtas.ie/en/debates/questions/)\
+For this workshop, I will filter the results to only see questions asked during the first week of [July 2020](https://www.oireachtas.ie/en/debates/questions/?questionType=all&datePeriod=dates&fromDate=01%2F07%2F2020&toDate=07%2F07%2F2020&term=%2Fie%2Foireachtas%2Fhouse%2Fdail%2F33&departmentToggle=member&member=&department=&depFrom=&depTo=&viewBy=question)\
+(Always examine the URLs when scraping multiple pages!) The first page is done separately:
+
+```{r, echo = TRUE}
+link = "https://www.oireachtas.ie/en/debates/questions/?questionType=all&datePeriod=dates&fromDate=01%2F07%2F2020&toDate=07%2F07%2F2020&term=%2Fie%2Foireachtas%2Fhouse%2Fdail%2F33&departmentToggle=member&member=&department=&depFrom=&depTo=&viewBy=question"
+questlinks = link %>% read_html() %>% html_nodes(".u-btn-secondary") %>% html_attr("href")
+questlinks
+```
+
+Notice how the URLs don't contain the main domain? Let's try again.
+
+```{r, echo = TRUE}
+link = "https://www.oireachtas.ie/en/debates/questions/?questionType=all&datePeriod=dates&fromDate=01%2F07%2F2020&toDate=07%2F07%2F2020&term=%2Fie%2Foireachtas%2Fhouse%2Fdail%2F33&departmentToggle=member&member=&department=&depFrom=&depTo=&viewBy=question"
+questlinks = link %>% read_html() %>% html_nodes(".u-btn-secondary") %>% html_attr("href") %>% paste0("https://www.oireachtas.ie", .)
+questlinks
+```
+
+We now have the secondary links, let's retrieve the data for the first question of the first page:
+
+```{r, echo = TRUE}
+  td = questlinks[1] %>% read_html() %>% html_nodes("#pq_1 .c-avatar__name-link") %>% html_text()
+  question = questlinks[1] %>% read_html() %>% html_nodes("#pq_1 p") %>% html_text()
+  answer = questlinks[1] %>% read_html() %>% html_nodes(".speech .text") %>% html_text()
+  questions = data.frame(td, question, answer, stringsAsFactors = FALSE)
+
+print(questions)
+```
+
+# Caveats
+
+-   DDoS attacks.
+    -   A distributed denial-of-service (DDoS) attack is a malicious attempt to disrupt the normal traffic of a targeted server, service or network by overwhelming the target or its surrounding infrastructure with a flood of Internet traffic.
+
+    -   Sys.sleep()
+-   Robots.txt
+    -   [Washington Post](https://www.washingtonpost.com/robots.txt)
+
+    -   [Twitter](https://twitter.com/robots.txt)
+
+    -   [TripAdvisor](https://www.tripadvisor.com/robots.txt)
+
+    -   `rvest` in concert with [`polite`](https://dmi3kno.github.io/polite/). The polite package ensures that you're respecting the robots.txt and not hammering the site with too many requests.
